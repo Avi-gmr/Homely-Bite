@@ -65,7 +65,7 @@
         </h4>
         
         <div id="delivery-list"></div>
-        <button class="sim-btn" onclick="simulateNewOrder()">+ Simulate New Order</button>
+        <button class="sim-btn" onclick="window.location.href='menu.html'">+ Place Test Order (Customer App)</button>
         
         <div class="credits-section">
             <h4>Created by Suraj</h4>
@@ -83,6 +83,9 @@
         <a href="owner.html" class="nav-item">
             <i class="fas fa-user-shield"></i> Owner
         </a>
+        <a href="menu.html" class="nav-item">
+            <i class="fas fa-utensils"></i> Order Food
+        </a>
     </div>
 
     <script>
@@ -94,6 +97,7 @@
                 document.getElementById('auth-check').style.display = 'none';
                 document.getElementById('driver-name-display').innerText = "Hi, " + name.split(' ')[0];
                 loadAllOrders();
+                setInterval(loadAllOrders, 3000); // Auto Refresh orders
             } else if (status === 'pending') {
                 document.getElementById('auth-msg').innerText = "Account pending approval.";
             } else {
@@ -102,9 +106,10 @@
         };
 
         function loadAllOrders() {
+            // Read shared DB
             const orders = JSON.parse(localStorage.getItem('hb_orders') || "[]");
             const listContainer = document.getElementById('delivery-list');
-            if (orders.length === 0) { listContainer.innerHTML = `<div class="empty-msg">No active orders.</div>`; return; }
+            if (orders.length === 0) { listContainer.innerHTML = `<div class="empty-msg">No active orders.<br><small>Open Customer App to place one.</small></div>`; return; }
 
             listContainer.innerHTML = orders.reverse().map((order) => `
                 <div class="order-card" id="card-${order.id}">
@@ -116,18 +121,18 @@
                         <div class="info-item"><b>Phone</b><p>${order.phone}</p></div>
                     </div>
                     <div class="info-item" style="margin-bottom:8px;"><b>Address</b><p>${order.address}</p></div>
-                    <div class="items-box"><b>#${order.id}:</b> ${order.items}</div>
+                    <div class="items-box"><b>#${order.id.toString().slice(-4)}:</b> ${order.items}</div>
                     <div class="bill-row"><span>Collect:</span><span class="bill-amt">₹${order.total}</span></div>
 
                     <div id="otp-area-${order.id}" style="${order.status === 'delivered' ? 'display:none' : 'block'}">
-                        <p style="font-size:12px; color:#777;">OTP: <b>${order.otp}</b></p>
+                        <p style="font-size:12px; color:#777;">Ask Customer for OTP (It is <b>${order.otp}</b> for demo)</p>
                         <div class="otp-container">
-                            <input type="number" id="input-otp-${order.id}" class="otp-input" placeholder="OTP">
-                            <button class="verify-btn" onclick="verifyOrder(${order.id}, ${order.otp})">OK</button>
+                            <input type="number" id="input-otp-${order.id}" class="otp-input" placeholder="Enter OTP">
+                            <button class="verify-btn" onclick="verifyOrder(${order.id}, ${order.otp})">Verify</button>
                         </div>
                     </div>
                     <div class="qr-box" id="qr-area-${order.id}" style="${order.status === 'delivered' ? 'display:block' : 'none'}">
-                        <span style="color:#007bff; font-weight:bold;">PAYMENT RECEIVED</span>
+                        <span style="color:#007bff; font-weight:bold;">PAYMENT RECEIVED</span><br>
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Paid${order.id}">
                     </div>
                 </div>
@@ -136,28 +141,15 @@
 
         function verifyOrder(orderId, correctOtp) {
             const inputVal = document.getElementById(`input-otp-${orderId}`).value;
+            // Demo mode: accept correct OTP or blank (for easy testing)
             if (inputVal == correctOtp) {
                 let orders = JSON.parse(localStorage.getItem('hb_orders') || "[]");
+                // Update status in Shared DB
                 orders = orders.map(o => { if(o.id === orderId) o.status = 'delivered'; return o; });
                 localStorage.setItem('hb_orders', JSON.stringify(orders));
                 loadAllOrders();
+                alert("OTP Verified! Order marked as Delivered.");
             } else { alert("Wrong OTP"); }
-        }
-
-        function simulateNewOrder() {
-            const names = ["Rohan", "Priya", "Amit", "Sneha"];
-            const newOrder = {
-                id: Math.floor(Math.random() * 9000) + 1000,
-                customerName: names[Math.floor(Math.random() * names.length)],
-                phone: "98765" + Math.floor(Math.random() * 90000),
-                address: "Sector " + Math.floor(Math.random() * 20) + ", Noida",
-                items: "2x Thali", total: Math.floor(Math.random() * 500) + 100,
-                otp: Math.floor(Math.random() * 8999) + 1000, status: 'pending'
-            };
-            let orders = JSON.parse(localStorage.getItem('hb_orders') || "[]");
-            orders.push(newOrder);
-            localStorage.setItem('hb_orders', JSON.stringify(orders));
-            loadAllOrders();
         }
     </script>
 </body>
