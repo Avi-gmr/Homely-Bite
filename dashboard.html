@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homely Bite - Delivery Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #d32f2f; --bg: #f2f2f2; --success: #28a745; --blue: #007bff; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); color: #333; padding-bottom: 60px; }
+
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .header h1 { margin: 0; font-size: 22px; letter-spacing: 1px; }
+        .header p { margin: 2px 0 0 0; font-size: 12px; opacity: 0.9; }
+
+        .view { padding: 15px; }
+
+        /* Compact Order Card */
+        .order-card { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            position: relative;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .info-item b { font-size: 11px; color: #888; display: block; text-transform: uppercase; margin-bottom: 2px; }
+        .info-item p { margin: 0; font-size: 15px; font-weight: 600; color: #333; }
+
+        .items-box { 
+            background: #fafafa; 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            border: 1px dashed #ddd;
+            margin: 12px 0;
+            color: #555;
+        }
+
+        .bill-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px 0;
+            border-top: 1px solid #eee;
+            margin-bottom: 10px;
+        }
+        .bill-amt { font-size: 20px; font-weight: bold; color: var(--success); }
+
+        /* OTP & QR Section */
+        .otp-container { display: flex; gap: 10px; }
+        .otp-input { 
+            flex: 1;
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            text-align: center; 
+            outline: none;
+        }
+        .otp-input:focus { border-color: var(--primary); }
+        .verify-btn { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            padding: 0 20px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.2s;
+        }
+        .verify-btn:active { transform: scale(0.98); }
+
+        .qr-box { 
+            display: none; 
+            text-align: center; 
+            margin-top: 10px; 
+            padding: 15px; 
+            background: #f0f8ff; 
+            border: 2px solid var(--blue); 
+            border-radius: 12px; 
+            animation: fadeIn 0.5s;
+        }
+        .qr-box img { width: 150px; height: 150px; mix-blend-mode: multiply; margin: 10px 0; }
+        
+        .confirm-label { color: var(--blue); font-weight: bold; font-size: 16px; display: block; }
+        
+        .empty-msg { text-align: center; margin-top: 50px; color: #999; }
+        
+        .sim-btn {
+            display: block; width: 100%; max-width: 250px; margin: 20px auto;
+            padding: 12px; background: #333; color: white; border: none;
+            border-radius: 25px; cursor: pointer;
+        }
+
+        .auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 999; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 20px; box-sizing: border-box;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="auth-check" class="auth-overlay">
+        <i class="fas fa-lock" style="font-size: 50px; color: #ccc; margin-bottom: 20px;"></i>
+        <h2>Access Restricted</h2>
+        <p id="auth-msg">Checking your partner status...</p>
+        <button onclick="window.location.href='register.html'" style="padding:10px 20px; margin-top:20px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer;">Go to Registration</button>
+    </div>
+
+    <div class="header">
+        <h1>HOMELY BITE</h1>
+        <p>Delivery Partner Dashboard</p>
+    </div>
+
+    <div id="main-view" class="view">
+        <h4 style="margin: 0 0 15px 5px; display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fas fa-motorcycle"></i> Active Orders</span>
+            <span id="driver-name-display" style="font-size:12px; font-weight:normal; background:rgba(255,255,255,0.2); padding:3px 8px; border-radius:10px;"></span>
+        </h4>
+        
+        <div id="delivery-list"></div>
+
+        <button class="sim-btn" onclick="simulateNewOrder()">+ Simulate New Order</button>
+    </div>
+
+    <script>
+        // Check Authentication First
+        window.onload = () => {
+            const status = localStorage.getItem('hb_status');
+            const name = localStorage.getItem('hb_name');
+
+            if (status === 'approved') {
+                document.getElementById('auth-check').style.display = 'none';
+                document.getElementById('driver-name-display').innerText = "Hi, " + name.split(' ')[0];
+                loadAllOrders();
+            } else if (status === 'pending') {
+                document.getElementById('auth-msg').innerText = "Your account is still pending approval from the Owner.";
+            } else {
+                document.getElementById('auth-msg').innerText = "You are not registered. Please sign up first.";
+            }
+        };
+
+        function loadAllOrders() {
+            const orders = JSON.parse(localStorage.getItem('hb_orders') || "[]");
+            const listContainer = document.getElementById('delivery-list');
+
+            if (orders.length === 0) {
+                listContainer.innerHTML = `<div class="empty-msg"><i class="fas fa-box-open" style="font-size:40px; margin-bottom:10px;"></i><br>No active orders assigned yet.<br><small>Click button below to test</small></div>`;
+                return;
+            }
+
+            listContainer.innerHTML = orders.reverse().map((order) => `
+                <div class="order-card" id="card-${order.id}">
+                    <div class="status-badge" style="color:${order.status === 'delivered' ? 'green' : 'orange'}">
+                        ${order.status === 'delivered' ? '<i class="fas fa-check"></i> Done' : 'On Way'}
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <b>Customer Name</b>
+                            <p>${order.customerName}</p>
+                        </div>
+                        <div class="info-item">
+                            <b>Phone</b>
+                            <p>${order.phone}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item" style="margin-bottom:8px;">
+                        <b>Delivery Address</b>
+                        <p style="font-size:14px; line-height:1.4;">${order.address}</p>
+                    </div>
+
+                    <div class="items-box">
+                        <b>Order #${order.id}:</b> ${order.items}
+                    </div>
+
+                    <div class="bill-row">
+                        <span style="font-weight:bold; font-size:14px; color:#555;">Amount to Collect:</span>
+                        <span class="bill-amt">₹${order.total}</span>
+                    </div>
+
+                    <div id="otp-area-${order.id}" style="${order.status === 'delivered' ? 'display:none' : 'block'}">
+                        <p style="font-size:12px; color:#777; margin-bottom:5px;">Ask customer for OTP: <b>${order.otp}</b> (For Demo)</p>
+                        <div class="otp-container">
+                            <input type="number" id="input-otp-${order.id}" class="otp-input" placeholder="Enter OTP">
+                            <button class="verify-btn" onclick="verifyOrder(${order.id}, ${order.otp})">VERIFY</button>
+                        </div>
+                    </div>
+
+                    <div class="qr-box" id="qr-area-${order.id}" style="${order.status === 'delivered' ? 'display:block' : 'none'}">
+                        <span class="confirm-label">
+                            <i class="fas fa-check-circle"></i> PAYMENT RECEIVED
+                        </span>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PaymentConfirmed-Order${order.id}" alt="QR Code">
+                        <br>
+                        <small>Amount <b>₹${order.total}</b> added to wallet.</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function verifyOrder(orderId, correctOtp) {
+            const inputVal = document.getElementById(`input-otp-${orderId}`).value;
+            
+            if (inputVal == correctOtp) {
+                // Update Order Status in LocalStorage
+                let orders = JSON.parse(localStorage.getItem('hb_orders') || "[]");
+                orders = orders.map(o => { 
+                    if(o.id === orderId) o.status = 'delivered'; 
+                    return o; 
+                });
+                localStorage.setItem('hb_orders', JSON.stringify(orders));
+
+                // UI Update
+                document.getElementById(`otp-area-${orderId}`).style.display = 'none';
+                document.getElementById(`qr-area-${orderId}`).style.display = 'block';
+                document.querySelector(`#card-${orderId} .status-badge`).innerHTML = '<i class="fas fa-check"></i> Done';
+                document.querySelector(`#card-${orderId} .status-badge`).style.color = 'green';
+                
+                // Play notification sound logic could go here
+                alert("Order Verified Successfully!");
+            } else {
+                alert("Incorrect OTP! Please try again.");
+            }
+        }
+
+        function simulateNewOrder() {
+            const names = ["Rohan Sharma", "Priya Singh", "Amit Kumar", "Sneha Gupta"];
+            const items = ["2x Paneer Thali", "1x Chicken Biryani", "4x Butter Naan, 1x Dal", "1x Masala Dosa"];
+            
+            const randomId = Math.floor(Math.random() * 9000) + 1000;
+            const randomOtp = Math.floor(Math.random() * 8999) + 1000;
+            
+            const newOrder = {
+                id: randomId,
+                customerName: names[Math.floor(Math.random() * names.length)],
+                phone: "98765" + Math.floor(Math.random() * 90000),
+                address: "House No " + Math.floor(Math.random() * 100) + ", Sector " + Math.floor(Math.random() * 20) + ", Noida",
+                items: items[Math.floor(Math.random() * items.length)],
+                total: Math.floor(Math.random() * 500) + 100,
+                otp: randomOtp,
+                status: 'pending'
+            };
+
+            let orders = JSON.parse(localStorage.getItem('hb_orders') || "[]");
+            orders.push(newOrder);
+            localStorage.setItem('hb_orders', JSON.stringify(orders));
+            loadAllOrders();
+        }
+    </script>
+</body>
+</html>
