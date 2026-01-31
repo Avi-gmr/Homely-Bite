@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Panel - Homely Bite</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; color: #333; padding: 20px; }
+        .admin-card { max-width: 700px; margin: 40px auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        h2 { text-align: center; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #f8f9fa; color: #666; font-size: 14px; text-transform: uppercase; }
+        th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: left; vertical-align: middle; }
+        .driver-img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
+        .btn-approve { background: #2ecc71; }
+        .btn-approve:hover { background: #27ae60; }
+        .btn-reject { background: #e74c3c; margin-left: 5px; }
+        .btn-reject:hover { background: #c0392b; }
+        .empty-state { text-align: center; color: #777; padding: 40px; }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-approved { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+
+<div class="admin-card">
+    <h2>🛠 Owner Verification Panel</h2>
+    
+    <div id="content-area">
+        <table id="admin-table">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Driver Details</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="list-body"></tbody>
+        </table>
+    </div>
+    
+    <div id="no-data" class="empty-state" style="display: none;">
+        No pending registrations found.
+    </div>
+    
+    <button onclick="clearData()" style="margin-top:20px; font-size:12px; color:#999; background:none; border:none; cursor:pointer; text-decoration:underline;">Reset System (Clear All Data)</button>
+</div>
+
+<script>
+    function loadData() {
+        const body = document.getElementById('list-body');
+        const registered = localStorage.getItem('hb_registered');
+        const status = localStorage.getItem('hb_status');
+        const name = localStorage.getItem('hb_name');
+        const age = localStorage.getItem('hb_age');
+        const pic = localStorage.getItem('hb_photo') || 'https://via.placeholder.com/60';
+
+        if(registered === 'true') {
+            document.getElementById('no-data').style.display = 'none';
+            document.getElementById('admin-table').style.display = 'table';
+            
+            let statusBadge = status === 'pending' 
+                ? '<span class="badge badge-pending">Pending</span>' 
+                : '<span class="badge badge-approved">Approved</span>';
+
+            let actionButtons = status === 'pending' 
+                ? `<button class="btn btn-approve" onclick="updateStatus('approved')">Approve</button>
+                   <button class="btn btn-reject" onclick="updateStatus('rejected')">Reject</button>`
+                : `<span style="color:green; font-weight:bold;">Verified</span>`;
+
+            body.innerHTML = `
+                <tr>
+                    <td><img src="${pic}" class="driver-img"></td>
+                    <td>
+                        <div style="font-size:16px; font-weight:bold;">${name}</div>
+                        <div style="font-size:13px; color:#666;">Age: ${age}</div>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td>${actionButtons}</td>
+                </tr>`;
+        } else {
+            document.getElementById('admin-table').style.display = 'none';
+            document.getElementById('no-data').style.display = 'block';
+        }
+    }
+
+    function updateStatus(newStatus) {
+        if(newStatus === 'rejected') {
+            if(confirm('Are you sure you want to reject and delete this driver?')) {
+                localStorage.clear();
+                loadData();
+            }
+        } else {
+            localStorage.setItem('hb_status', newStatus);
+            loadData();
+        }
+    }
+
+    function clearData() {
+        if(confirm("This will delete all driver and order data. Continue?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+
+    window.onload = loadData;
+</script>
+</body>
+</html>
